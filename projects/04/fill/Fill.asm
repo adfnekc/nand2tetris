@@ -12,3 +12,54 @@
 // the screen should remain fully clear as long as no key is pressed.
 
 // Put your code here.
+
+(LOOP)
+    @KBD
+    D=M
+    @white
+    D;JEQ
+    @black
+    0;JMP
+    @LOOP
+    0;JMP
+
+
+(white)
+    @colur
+    M=0
+    @draw
+    0;JMP
+
+(black)
+    @colur
+    M=-1
+    @draw
+    0;JMP
+
+(draw)
+    @SCREEN
+    D=A
+    @pos
+    M=D
+    @KBD
+    D=A
+    @last_pos
+    M=D
+
+    (drwa_loop)
+        @last_pos
+        D=M
+        @pos
+        D=M-D
+        @LOOP
+        D;JEQ
+
+        @colur
+        D=M
+        @pos
+        A=M
+        M=D
+        @pos
+        M=M+1
+        @drwa_loop
+        0;JMP
