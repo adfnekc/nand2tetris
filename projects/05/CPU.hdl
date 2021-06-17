@@ -39,5 +39,26 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+        //ixxa cccc ccdd djjj or ixxx xxxx xxxx xxxx
+        //if i=1
+        //  a=instruction[12..13]
+        //  c=instruction[6..11]
+        //  d=instruction[3..5]
+        //  j=instruction[0..2]
+        //else i=0
+        //  A=instruction[0..14]
+
+        DMux(in=true,sel=instruction[15],a=instA,b=instC);
+
+        A(in[15]=false,in[0..14]=instruction[15],load=instA,out=valueA);
+        Mux16(a=valueA, b=inM, sel=instruction[12],out=AMout);
+
+        instruction[3]
+        instruction[4]
+        instruction[5]
+
+        ALU(x=valueD,y=AMout,nx=instruction[11],ny=instruction[10],zy=instruction[9],ny=instruction[8],f=instruction[7],no=instruction[6],out=outAlu,zr=zr,ng=ng);
+
+
+        PC(in=,load=,inc=,reset=reset,out=pc);
 }
