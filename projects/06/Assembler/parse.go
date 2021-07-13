@@ -70,13 +70,22 @@ type Parser struct {
 	CurrentCommand string
 }
 
+type a_command struct {
+}
+
 func NewParser(in io.Reader, out io.Writer) *Parser {
 	scanner := bufio.NewScanner(in)
 	return &Parser{in: in, out: out, scanner: scanner}
 }
 
 func (p *Parser) Parse() {
-
+	for p.HasMoreCommands() {
+		if ok := p.Advance(); ok {
+			if p.CommandType() == A_COMMAND {
+				p.Symbol()
+			}
+		}
+	}
 }
 func (p *Parser) HasMoreCommands() bool {
 	return p.scanner.Scan()
