@@ -20,18 +20,19 @@ func padding(s string, l int, pad string) string {
 }
 
 func main1() {
-	fmt.Printf("%#v\n", os.Args)
-	if len(os.Args) < 2 {
-		fmt.Print("assembler need filename")
-	}
-	filename := os.Args[1]
+	// fmt.Printf("%#v\n", os.Args)
+	// if len(os.Args) < 2 {
+	// 	fmt.Print("assembler need filename")
+	// }
+	// filename := os.Args[1]
+	filename := "../rect/RectL.asm"
 	name, path, err := fileinfo(filename)
 	if err != nil {
 		log.Fatal(err)
 	}
 	println(name, path)
 
-	asmFile, err := os.OpenFile(fmt.Sprintf("%s.jack", name), os.O_RDWR|os.O_CREATE, 0644)
+	asmFile, err := os.OpenFile(fmt.Sprintf("%s.hack", name), os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,7 +45,6 @@ func main1() {
 	defer f.Close()
 	parser := NewParser(f, asmFile)
 	parser.Parse()
-
 }
 
 func fileinfo(filename string) (name string, path string, err error) {
@@ -57,7 +57,8 @@ type commandType int
 
 // commandType
 const (
-	A_COMMAND commandType = iota
+	NOT_COMMAND commandType = iota
+	A_COMMAND
 	C_COMMAND
 	L_COMMAND
 )
@@ -70,19 +71,25 @@ type Parser struct {
 	CurrentCommand string
 }
 
-type a_command struct {
-}
-
 func NewParser(in io.Reader, out io.Writer) *Parser {
 	scanner := bufio.NewScanner(in)
+	scanner.Split(bufio.ScanLines)
 	return &Parser{in: in, out: out, scanner: scanner}
+}
+
+func (p *Parser) WriteLines(s string) {
+	p.out.Write([]byte(s + "\n"))
 }
 
 func (p *Parser) Parse() {
 	for p.HasMoreCommands() {
 		if ok := p.Advance(); ok {
+			fmt.Println(p.CurrentCommand)
 			if p.CommandType() == A_COMMAND {
-				p.Symbol()
+				p.WriteLines(fmt.Sprintf("0%s", p.Symbol()))
+			} else if p.CommandType() == C_COMMAND {
+				fmt.Println(p.Comp(), p.Dest(), p.Jump())
+				p.WriteLines(fmt.Sprintf("111%s%s%s", p.Comp(), p.Dest(), p.Jump()))
 			}
 		}
 	}
@@ -99,6 +106,10 @@ func (p *Parser) Advance() bool {
 }
 
 func (p *Parser) CommandType() commandType {
+	if strings.HasPrefix(p.CurrentCommand, "//") {
+		return NOT_COMMAND
+	}
+
 	if strings.HasPrefix(p.CurrentCommand, "@") {
 		if regexp.MustCompile(`@\d+`).MatchString(p.CurrentCommand) {
 			return A_COMMAND
@@ -127,6 +138,9 @@ const (
 
 func (p *Parser) Dest() string {
 	var r uint = 0
+	if strings.Contains(p.CurrentCommand, ";") {
+		return "000"
+	}
 	switch (strings.Split(p.CurrentCommand, "="))[0] {
 	case "M":
 		r = M
@@ -153,29 +167,34 @@ func (p *Parser) Dest() string {
 }
 
 var CompMap = map[string]string{
-	"0":   "0101010",
-	"1":   "0111111",
-	"-1":  "0111010",
-	"D":   "0001100",
-	"A":   "0110000",
-	"!D":  "0001101",
-	"!A":  "0110001",
-	"-D":  "0001111",
-	"-A":  "0110011",
-	"D+1": "0011111",
-	"A+1": "0110111",
-	"D-1": "0001110",
-	"A-1": "0110010",
-	"D+A": "0000010",
-	"D-A": "0010011",
-	"A-D": "0000111",
-	"D&A": "0000000",
-	"D|A": "0010101",
+	"0":   "101010",
+	"1":   "111111",
+	"-1":  "111010",
+	"D":   "001100",
+	"A":   "110000",
+	"!D":  "001101",
+	"!A":  "110001",
+	"-D":  "001111",
+	"-A":  "110011",
+	"D+1": "011111",
+	"A+1": "110111",
+	"D-1": "001110",
+	"A-1": "110010",
+	"D+A": "000010",
+	"D-A": "010011",
+	"A-D": "000111",
+	"D&A": "000000",
+	"D|A": "010101",
 }
 
 func (p *Parser) Comp() (compCode string) {
+	comp := ""
+	if strings.Contains(p.CurrentCommand, ";") {
+		comp = (strings.Split(p.CurrentCommand, ";"))[0]
+	} else {
+		comp = (strings.Split(p.CurrentCommand, "="))[1]
+	}
 	compCode = "0"
-	comp := (strings.Split(p.CurrentCommand, "="))[1]
 	if strings.Contains(comp, "M") {
 		compCode = "1"
 	}
@@ -190,7 +209,9 @@ var JumpMap = []string{
 
 func (p *Parser) Jump() string {
 	var r int
-	for index, jumpCommand := range JumpMap {
+
+	for index := len(JumpMap) - 1; index > 0; index-- {
+		jumpCommand := JumpMap[index]
 		if strings.Contains(p.CurrentCommand, jumpCommand) {
 			r = index
 			break

@@ -6,6 +6,29 @@ import (
 	"testing"
 )
 
+func TestMain1(t *testing.T) {
+	type fields struct {
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{name: "main",
+			fields: fields{},
+			want:   "1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			main1()
+			if got := "1"; got != tt.want {
+				t.Errorf("main() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 func TestParser_Dest(t *testing.T) {
 	type fields struct {
 		in             io.Reader
@@ -64,6 +87,44 @@ func TestParser_Dest(t *testing.T) {
 			}
 			if got := p.Dest(); got != tt.want {
 				t.Errorf("Parser.Dest() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParser_Jump(t *testing.T) {
+	type fields struct {
+		in             io.Reader
+		out            io.Writer
+		scanner        *bufio.Scanner
+		CurrentCommand string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{name: "000",
+			fields: fields{
+				CurrentCommand: "M=D+M",
+			},
+			want: "000"},
+		{name: "JMP",
+			fields: fields{
+				CurrentCommand: "D:JMP",
+			},
+			want: "111"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{
+				// in:             tt.fields.in,
+				// out:            tt.fields.out,
+				scanner:        tt.fields.scanner,
+				CurrentCommand: tt.fields.CurrentCommand,
+			}
+			if got := p.Jump(); got != tt.want {
+				t.Errorf("Parser.Jump() = %v, want %v", got, tt.want)
 			}
 		})
 	}
