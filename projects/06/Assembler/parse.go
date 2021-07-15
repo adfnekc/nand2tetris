@@ -63,6 +63,21 @@ const (
 	L_COMMAND
 )
 
+var COMMAND_FUNC = map[commandType]func(p *Parser) string{
+	NOT_COMMAND: func(p *Parser) string {
+		return ""
+	},
+	A_COMMAND: func(p *Parser) string {
+		return fmt.Sprintf("0%s", p.Symbol())
+	},
+	C_COMMAND: func(p *Parser) string {
+		return fmt.Sprintf("111%s%s%s", p.Comp(), p.Dest(), p.Jump())
+	},
+	L_COMMAND: func(p *Parser) string {
+		return ""
+	},
+}
+
 // Parser parse jack assembler to machinecode
 type Parser struct {
 	in             io.Reader
@@ -85,20 +100,18 @@ func (p *Parser) Parse() {
 	for p.HasMoreCommands() {
 		if ok := p.Advance(); ok {
 			fmt.Println(p.CurrentCommand)
-			if p.CommandType() == A_COMMAND {
-				p.WriteLines(fmt.Sprintf("0%s", p.Symbol()))
-			} else if p.CommandType() == C_COMMAND {
-				fmt.Println(p.Comp(), p.Dest(), p.Jump())
-				p.WriteLines(fmt.Sprintf("111%s%s%s", p.Comp(), p.Dest(), p.Jump()))
-			}
+			fc := COMMAND_FUNC[p.CommandType()]
+			p.WriteLines(fc(p))
 		}
 	}
 }
+
 func (p *Parser) HasMoreCommands() bool {
 	return p.scanner.Scan()
 }
 func (p *Parser) Advance() bool {
 	if t := p.scanner.Text(); t != "" {
+		t = strings.TrimSpace(t)
 		p.CurrentCommand = t
 		return true
 	}
