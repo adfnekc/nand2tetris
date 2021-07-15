@@ -100,8 +100,9 @@ func (p *Parser) Parse() {
 	for p.HasMoreCommands() {
 		if ok := p.Advance(); ok {
 			fmt.Println(p.CurrentCommand)
-			fc := COMMAND_FUNC[p.CommandType()]
-			p.WriteLines(fc(p))
+			if code := COMMAND_FUNC[p.CommandType()](p); code != "" {
+				p.WriteLines(code)
+			}
 		}
 	}
 }
@@ -110,19 +111,19 @@ func (p *Parser) HasMoreCommands() bool {
 	return p.scanner.Scan()
 }
 func (p *Parser) Advance() bool {
-	if t := p.scanner.Text(); t != "" {
-		t = strings.TrimSpace(t)
-		p.CurrentCommand = t
-		return true
+	if asmCodeString := strings.TrimSpace(p.scanner.Text()); asmCodeString != "" {
+		if index := strings.Index(asmCodeString, "//"); index > -1 {
+			asmCodeString = strings.TrimSpace(string([]byte(asmCodeString)[:index]))
+			if asmCodeString != "" {
+				p.CurrentCommand = asmCodeString
+				return true
+			}
+		}
 	}
 	return false
 }
 
 func (p *Parser) CommandType() commandType {
-	if strings.HasPrefix(p.CurrentCommand, "//") {
-		return NOT_COMMAND
-	}
-
 	if strings.HasPrefix(p.CurrentCommand, "@") {
 		if regexp.MustCompile(`@\d+`).MatchString(p.CurrentCommand) {
 			return A_COMMAND
@@ -133,14 +134,11 @@ func (p *Parser) CommandType() commandType {
 }
 func (p *Parser) Symbol() string {
 	symbol := strings.TrimPrefix(p.CurrentCommand, "@")
-	if p.CommandType() == A_COMMAND {
-		i64, err := strconv.ParseInt(symbol, 10, 0)
-		if err != nil {
-			log.Fatal(err)
-		}
-		return padding(strconv.FormatInt(i64, 2), 15, "0")
+	i64, err := strconv.ParseInt(symbol, 10, 0)
+	if err != nil {
+		log.Fatal(err)
 	}
-	return ""
+	return padding(strconv.FormatInt(i64, 2), 15, "0")
 }
 
 const (
@@ -149,33 +147,41 @@ const (
 	A
 )
 
+func (p *Parser) isJump() bool {
+	return p.CommandType() == C_COMMAND && strings.Contains(p.CurrentCommand, ";")
+}
+
+func (p *Parser) dest() string {
+	return (strings.Split(p.CurrentCommand, "="))[0]
+}
+
 func (p *Parser) Dest() string {
 	var r uint = 0
-	if strings.Contains(p.CurrentCommand, ";") {
-		return "000"
+	if !p.isJump() {
+		switch p.dest() {
+		case "M":
+			r = M
+			break
+		case "D":
+			r = D
+			break
+		case "MD":
+			r = M | D
+			break
+		case "A":
+			r = A
+			break
+		case "AM":
+			r = A | M
+			break
+		case "AD":
+			r = A | D
+			break
+		case "AMD":
+			r = A | M | D
+		}
 	}
-	switch (strings.Split(p.CurrentCommand, "="))[0] {
-	case "M":
-		r = M
-		break
-	case "D":
-		r = D
-		break
-	case "MD":
-		r = M | D
-		break
-	case "A":
-		r = A
-		break
-	case "AM":
-		r = A | M
-		break
-	case "AD":
-		r = A | D
-		break
-	case "AMD":
-		r = A | M | D
-	}
+
 	return padding(strconv.FormatInt(int64(r), 2), 3, "0")
 }
 
@@ -202,7 +208,7 @@ var CompMap = map[string]string{
 
 func (p *Parser) Comp() (compCode string) {
 	comp := ""
-	if strings.Contains(p.CurrentCommand, ";") {
+	if p.isJump() {
 		comp = (strings.Split(p.CurrentCommand, ";"))[0]
 	} else {
 		comp = (strings.Split(p.CurrentCommand, "="))[1]
