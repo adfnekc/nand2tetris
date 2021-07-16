@@ -2,33 +2,11 @@ package parse
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"testing"
 )
 
-func TestMain1(t *testing.T) {
-	type fields struct {
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		want   string
-	}{
-		{name: "main",
-			fields: fields{},
-			want:   "1",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			main1()
-			if got := "1"; got != tt.want {
-				t.Errorf("main() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 func TestParser_Dest(t *testing.T) {
 	type fields struct {
 		in             io.Reader
@@ -126,6 +104,53 @@ func TestParser_Jump(t *testing.T) {
 			if got := p.Jump(); got != tt.want {
 				t.Errorf("Parser.Jump() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestParser_Main(t *testing.T) {
+	type fields struct {
+		filename string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		// {
+		// 	"Pong", fields{"../pong/Pong.asm"},
+		// },
+		// {
+		// 	"max", fields{"../max/Max.asm"},
+		// },
+		{
+			"rect", fields{"../rect/Rect.asm"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser(tt.fields.filename)
+			p.Main()
+		})
+	}
+}
+
+func TestSymbolTable_buildTable(t *testing.T) {
+	type fields struct {
+		filename string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+	}{
+		{
+			"Max", fields{"../max/Max.asm"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewSymbolTable(tt.fields.filename)
+			s.buildTable()
+			fmt.Printf("%#v", s.table)
 		})
 	}
 }
